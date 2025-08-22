@@ -1,2 +1,185 @@
-# Biodiversity Credits for Conservation
+# 🌿 Biodiversity Credits for Conservation
 
+A blockchain-based marketplace for biodiversity credits tied to preserved habitats, helping combat the accelerating loss of biodiversity through economic incentives.
+
+## 🎯 Problem Statement
+
+Biodiversity loss is accelerating globally, and conservation efforts are severely underfunded. Traditional conservation models lack transparent verification and sustainable economic incentives.
+
+## 💡 Solution
+
+Our smart contract creates a marketplace where:
+- 🛰️ **Satellite-verified** protected areas generate biodiversity credits
+- 🏢 **NGO partnerships** provide professional habitat verification
+- 💰 **Credit trading** creates economic incentives for conservation
+- 📊 **Transparent tracking** ensures accountability
+
+## ✨ Features
+
+### 🏞️ Habitat Management
+- Register new conservation habitats
+- Calculate credits based on size and biodiversity score
+- Satellite verification through authorized NGOs
+- Annual credit minting for verified habitats
+
+### 🤝 NGO Partnerships
+- Authorize NGO partners for habitat verification
+- Reputation scoring system
+- Verification fee structure
+- Professional oversight of conservation claims
+
+### 💱 Credit Trading
+- Create sell orders for biodiversity credits
+- Execute trades with STX payments
+- Cancel active trades
+- Direct credit transfers between users
+
+## 🚀 Quick Start
+
+### Prerequisites
+- [Clarinet](https://docs.hiro.so/stacks/clarinet)
+- Node.js (for testing)
+
+### Installation
+```bash
+git clone <repository-url>
+cd Biodiversity-Credits-for-Conservation
+npm install
+```
+
+### Testing
+```bash
+npm test
+```
+
+### Deployment
+```bash
+clarinet deploy --testnet
+```
+
+## 📖 Usage Guide
+
+### 1. Register a Habitat 🌳
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation register-habitat 
+  "Amazon Rainforest Sector 42" 
+  u1000  ;; 1000 hectares
+  u80)   ;; biodiversity score out of 100
+```
+
+### 2. NGO Verification 🔍
+Only authorized NGOs can verify habitats:
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation verify-habitat 
+  u1  ;; habitat-id
+  0x1234...)  ;; satellite data hash
+```
+
+### 3. Mint Credits 🪙
+After verification, habitat owners can mint credits annually:
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation mint-credits u1)
+```
+
+### 4. Trade Credits 🔄
+Create sell orders:
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation create-trade 
+  u100   ;; credits to sell
+  u50)   ;; price per credit in STX
+```
+
+Execute trades:
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation execute-trade u1)
+```
+
+### 5. Transfer Credits 📤
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation transfer-credits 
+  'SP2ABC...  ;; recipient
+  u25)        ;; amount
+```
+
+## 🔍 Read-Only Functions
+
+### Check Balances
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-user-credits 'SP123...)
+```
+
+### View Habitat Details
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-habitat u1)
+```
+
+### Check Trade Status
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-trade u1)
+```
+
+### View Contract Statistics
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-contract-info)
+```
+
+## 🏗️ Contract Architecture
+
+### Core Components
+- **Habitat Registry**: Tracks protected areas and their properties
+- **Credit System**: Fungible token representing biodiversity value
+- **Verification System**: NGO-based validation using satellite data
+- **Trading Marketplace**: Peer-to-peer credit exchange
+- **Partnership Management**: NGO authorization and reputation
+
+### Credit Calculation
+Credits per year = `habitat-size-hectares × biodiversity-score`
+
+Credits are minted proportionally based on time elapsed since last minting, with a minimum interval of ~6 months (8760 blocks).
+
+## 🛡️ Security Features
+
+- ✅ Owner-only NGO authorization
+- ✅ Verification required before credit minting
+- ✅ Balance checks for all transfers
+- ✅ Trade status validation
+- ✅ Input validation for all parameters
+
+## 🌍 Environmental Impact
+
+Each credit represents verified conservation of biodiversity-rich habitat. The economic incentive structure encourages:
+- Long-term habitat preservation
+- Professional verification standards
+- Transparent impact measurement
+- Sustainable conservation funding
+
+## 📊 Data Structures
+
+### Habitat Record
+- Owner, location, size, biodiversity score
+- Verification status and credits per year
+- Last minting block tracking
+
+### NGO Partnership
+- Authorization status and verification fees
+- Reputation scoring (0-100)
+
+### Trade Orders
+- Seller/buyer information
+- Credit amount and pricing
+- Status tracking (active/completed/cancelled)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+---
+
+*Building a sustainable future through blockchain-verified conservation* 🌱
