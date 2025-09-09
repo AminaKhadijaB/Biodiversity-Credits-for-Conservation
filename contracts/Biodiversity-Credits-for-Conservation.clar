@@ -6,11 +6,15 @@
 (define-constant ERR_ALREADY_EXISTS (err u104))
 (define-constant ERR_NOT_VERIFIED (err u105))
 (define-constant ERR_TRADE_NOT_FOUND (err u106))
+(define-constant ERR_CARBON_PROJECT_NOT_FOUND (err u107))
+(define-constant ERR_INVALID_CARBON_RATE (err u108))
 
 (define-data-var next-habitat-id uint u1)
 (define-data-var next-trade-id uint u1)
+(define-data-var next-carbon-project-id uint u1)
 
 (define-fungible-token biodiversity-credits)
+(define-fungible-token carbon-credits)
 
 (define-map habitats 
   {habitat-id: uint}
@@ -37,6 +41,22 @@
 (define-map user-balances
   {user: principal}
   {credits: uint}
+)
+
+(define-map carbon-projects
+  {project-id: uint}
+  {
+    habitat-id: uint,
+    carbon-rate-per-hectare: uint,
+    methodology: (string-ascii 50),
+    active: bool,
+    last-carbon-mint: uint
+  }
+)
+
+(define-map user-carbon-balances
+  {user: principal}
+  {carbon-credits: uint}
 )
 
 (define-map trades
@@ -272,6 +292,106 @@
   )
 )
 
+(define-public (register-carbon-project (habitat-id uint) (carbon-rate-per-hectare uint) (methodology (string-ascii 50)))
+  (let
+    (
+      (habitat (unwrap! (map-get? habitats {habitat-id: habitat-id}) ERR_HABITAT_NOT_FOUND))
+      (project-id (var-get next-carbon-project-id))
+    )
+    (asserts! (is-eq tx-sender (get owner habitat)) ERR_NOT_AUTHORIZED)
+    (asserts! (get verified habitat) ERR_NOT_VERIFIED)
+    (asserts! (> carbon-rate-per-hectare u0) ERR_INVALID_CARBON_RATE)
+    
+    (map-insert carbon-projects
+      {project-id: project-id}
+      {
+        habitat-id: habitat-id,
+        carbon-rate-per-hectare: carbon-rate-per-hectare,
+        methodology: methodology,
+        active: true,
+        last-carbon-mint: stacks-block-height
+      }
+    )
+    
+    (var-set next-carbon-project-id (+ project-id u1))
+    (ok project-id)
+  )
+)
+
+(define-public (mint-carbon-credits (project-id uint))
+  (let
+    (
+      (project (unwrap! (map-get? carbon-projects {project-id: project-id}) ERR_CARBON_PROJECT_NOT_FOUND))
+      (habitat (unwrap! (map-get? habitats {habitat-id: (get habitat-id project)}) ERR_HABITAT_NOT_FOUND))
+      (blocks-since-last-mint (- stacks-block-height (get last-carbon-mint project)))
+      (carbon-per-year (* (get size-hectares habitat) (get carbon-rate-per-hectare project)))
+      (carbon-to-mint (/ (* carbon-per-year blocks-since-last-mint) u52560))
+    )
+    (asserts! (is-eq tx-sender (get owner habitat)) ERR_NOT_AUTHORIZED)
+    (asserts! (get active project) ERR_NOT_AUTHORIZED)
+    (asserts! (get verified habitat) ERR_NOT_VERIFIED)
+    (asserts! (> blocks-since-last-mint u8760) ERR_INVALID_AMOUNT)
+    
+    (try! (ft-mint? carbon-credits carbon-to-mint tx-sender))
+    
+    (map-set carbon-projects
+      {project-id: project-id}
+      (merge project {last-carbon-mint: stacks-block-height})
+    )
+    
+    (map-set user-carbon-balances
+      {user: tx-sender}
+      {carbon-credits: (+ (default-to u0 (get carbon-credits (map-get? user-carbon-balances {user: tx-sender}))) carbon-to-mint)}
+    )
+    (ok carbon-to-mint)
+  )
+)
+
+(define-public (transfer-carbon-credits (recipient principal) (amount uint))
+  (let
+    (
+      (sender-balance (default-to u0 (get carbon-credits (map-get? user-carbon-balances {user: tx-sender}))))
+      (recipient-balance (default-to u0 (get carbon-credits (map-get? user-carbon-balances {user: recipient}))))
+    )
+    (asserts! (>= sender-balance amount) ERR_INSUFFICIENT_CREDITS)
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    
+    (map-set user-carbon-balances
+      {user: tx-sender}
+      {carbon-credits: (- sender-balance amount)}
+    )
+    
+    (map-set user-carbon-balances
+      {user: recipient}
+      {carbon-credits: (+ recipient-balance amount)}
+    )
+    (ok true)
+  )
+)
+
+(define-public (swap-credits (bio-credits-amount uint))
+  (let
+    (
+      (sender-bio-balance (default-to u0 (get credits (map-get? user-balances {user: tx-sender}))))
+      (sender-carbon-balance (default-to u0 (get carbon-credits (map-get? user-carbon-balances {user: tx-sender}))))
+      (carbon-credits-amount (/ (* bio-credits-amount u75) u100))
+    )
+    (asserts! (>= sender-bio-balance bio-credits-amount) ERR_INSUFFICIENT_CREDITS)
+    (asserts! (> bio-credits-amount u0) ERR_INVALID_AMOUNT)
+    
+    (map-set user-balances
+      {user: tx-sender}
+      {credits: (- sender-bio-balance bio-credits-amount)}
+    )
+    
+    (map-set user-carbon-balances
+      {user: tx-sender}
+      {carbon-credits: (+ sender-carbon-balance carbon-credits-amount)}
+    )
+    (ok carbon-credits-amount)
+  )
+)
+
 (define-read-only (get-habitat (habitat-id uint))
   (map-get? habitats {habitat-id: habitat-id})
 )
@@ -313,10 +433,42 @@
   (ft-get-supply biodiversity-credits)
 )
 
+(define-read-only (get-carbon-project (project-id uint))
+  (map-get? carbon-projects {project-id: project-id})
+)
+
+(define-read-only (get-user-carbon-credits (user principal))
+  (default-to u0 (get carbon-credits (map-get? user-carbon-balances {user: user})))
+)
+
+(define-read-only (calculate-carbon-credits-eligible (project-id uint))
+  (match (map-get? carbon-projects {project-id: project-id})
+    project
+    (match (map-get? habitats {habitat-id: (get habitat-id project)})
+      habitat
+      (let
+        (
+          (blocks-since-last-mint (- stacks-block-height (get last-carbon-mint project)))
+          (carbon-per-year (* (get size-hectares habitat) (get carbon-rate-per-hectare project)))
+          (carbon-per-block (/ carbon-per-year u52560))
+        )
+        (if (and (get active project) (get verified habitat))
+          (ok (* carbon-per-block blocks-since-last-mint))
+          (ok u0)
+        )
+      )
+      ERR_HABITAT_NOT_FOUND
+    )
+    ERR_CARBON_PROJECT_NOT_FOUND
+  )
+)
+
 (define-read-only (get-contract-info)
   {
     total-habitats: (- (var-get next-habitat-id) u1),
     total-trades: (- (var-get next-trade-id) u1),
-    total-credits-supply: (ft-get-supply biodiversity-credits)
+    total-carbon-projects: (- (var-get next-carbon-project-id) u1),
+    total-credits-supply: (ft-get-supply biodiversity-credits),
+    total-carbon-supply: (ft-get-supply carbon-credits)
   }
 )

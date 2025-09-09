@@ -34,6 +34,12 @@ Our smart contract creates a marketplace where:
 - Cancel active trades
 - Direct credit transfers between users
 
+### 🌍 Carbon Credit Integration
+- Register carbon offset projects for verified habitats
+- Mint carbon credits based on habitat size and sequestration rates
+- Transfer carbon credits between users
+- Credit swap functionality (biodiversity ↔ carbon)
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -101,11 +107,31 @@ Execute trades:
   u25)        ;; amount
 ```
 
+### 6. Register Carbon Project 🌍
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation register-carbon-project 
+  u1          ;; habitat-id
+  u15         ;; carbon tons per hectare per year
+  "VCS-REDD") ;; methodology
+```
+
+### 7. Mint Carbon Credits ♻️
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation mint-carbon-credits u1)
+```
+
+### 8. Swap Credits 🔄
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation swap-credits 
+  u100)  ;; biodiversity credits to swap for carbon credits (75% conversion rate)
+```
+
 ## 🔍 Read-Only Functions
 
 ### Check Balances
 ```clarity
 (contract-call? .Biodiversity-Credits-for-Conservation get-user-credits 'SP123...)
+(contract-call? .Biodiversity-Credits-for-Conservation get-user-carbon-credits 'SP123...)
 ```
 
 ### View Habitat Details
@@ -118,6 +144,11 @@ Execute trades:
 (contract-call? .Biodiversity-Credits-for-Conservation get-trade u1)
 ```
 
+### View Carbon Projects
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-carbon-project u1)
+```
+
 ### View Contract Statistics
 ```clarity
 (contract-call? .Biodiversity-Credits-for-Conservation get-contract-info)
@@ -127,15 +158,17 @@ Execute trades:
 
 ### Core Components
 - **Habitat Registry**: Tracks protected areas and their properties
-- **Credit System**: Fungible token representing biodiversity value
+- **Credit System**: Dual fungible tokens for biodiversity and carbon credits
 - **Verification System**: NGO-based validation using satellite data
 - **Trading Marketplace**: Peer-to-peer credit exchange
 - **Partnership Management**: NGO authorization and reputation
+- **Carbon Integration**: Links habitats to carbon sequestration projects
 
 ### Credit Calculation
-Credits per year = `habitat-size-hectares × biodiversity-score`
+**Biodiversity Credits:** `habitat-size-hectares × biodiversity-score`  
+**Carbon Credits:** `habitat-size-hectares × carbon-rate-per-hectare`
 
-Credits are minted proportionally based on time elapsed since last minting, with a minimum interval of ~6 months (8760 blocks).
+Credits are minted proportionally based on time elapsed since last minting, with a minimum interval of ~6 months (8760 blocks). Credit swapping available at 75% conversion rate (biodiversity → carbon).
 
 ## 🛡️ Security Features
 
@@ -147,11 +180,12 @@ Credits are minted proportionally based on time elapsed since last minting, with
 
 ## 🌍 Environmental Impact
 
-Each credit represents verified conservation of biodiversity-rich habitat. The economic incentive structure encourages:
-- Long-term habitat preservation
+Each credit represents verified conservation of biodiversity-rich habitat with optional carbon sequestration benefits. The dual-credit economic incentive structure encourages:
+- Long-term habitat preservation  
+- Carbon sequestration and climate action
 - Professional verification standards
 - Transparent impact measurement
-- Sustainable conservation funding
+- Sustainable conservation funding through multiple revenue streams
 
 ## 📊 Data Structures
 
@@ -168,6 +202,11 @@ Each credit represents verified conservation of biodiversity-rich habitat. The e
 - Seller/buyer information
 - Credit amount and pricing
 - Status tracking (active/completed/cancelled)
+
+### Carbon Projects
+- Linked habitat and carbon sequestration rates
+- Methodology tracking (VCS, Gold Standard, etc.)
+- Active status and minting history
 
 ## 🤝 Contributing
 
