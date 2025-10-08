@@ -1,4 +1,4 @@
-# 🌿 Biodiversity Credits for Conservation
+#  Biodiversity Credits for Conservation
 
 A blockchain-based marketplace for biodiversity credits tied to preserved habitats, helping combat the accelerating loss of biodiversity through economic incentives.
 
@@ -33,6 +33,7 @@ Our smart contract creates a marketplace where:
 - Execute trades with STX payments
 - Cancel active trades
 - Direct credit transfers between users
+- Batch credit transfers for efficient bulk distributions
 
 ### 🌍 Carbon Credit Integration
 - Register carbon offset projects for verified habitats
@@ -102,27 +103,37 @@ Execute trades:
 
 ### 5. Transfer Credits 📤
 ```clarity
-(contract-call? .Biodiversity-Credits-for-Conservation transfer-credits 
+(contract-call? .Biodiversity-Credits-for-Conservation transfer-credits
   'SP2ABC...  ;; recipient
   u25)        ;; amount
 ```
 
-### 6. Register Carbon Project 🌍
+### 6. Batch Transfer Credits 📦
 ```clarity
-(contract-call? .Biodiversity-Credits-for-Conservation register-carbon-project 
+(contract-call? .Biodiversity-Credits-for-Conservation batch-transfer-credits
+  (list
+    {recipient: 'SP2ABC..., amount: u10}
+    {recipient: 'SP3DEF..., amount: u20}
+  )
+)
+```
+
+### 7. Register Carbon Project 🌍
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation register-carbon-project
   u1          ;; habitat-id
   u15         ;; carbon tons per hectare per year
   "VCS-REDD") ;; methodology
 ```
 
-### 7. Mint Carbon Credits ♻️
+### 8. Mint Carbon Credits ♻️
 ```clarity
 (contract-call? .Biodiversity-Credits-for-Conservation mint-carbon-credits u1)
 ```
 
-### 8. Swap Credits 🔄
+### 9. Swap Credits 🔄
 ```clarity
-(contract-call? .Biodiversity-Credits-for-Conservation swap-credits 
+(contract-call? .Biodiversity-Credits-for-Conservation swap-credits
   u100)  ;; biodiversity credits to swap for carbon credits (75% conversion rate)
 ```
 
@@ -163,6 +174,7 @@ Execute trades:
 - **Trading Marketplace**: Peer-to-peer credit exchange
 - **Partnership Management**: NGO authorization and reputation
 - **Carbon Integration**: Links habitats to carbon sequestration projects
+- **Batch Transfer System**: Efficient multi-recipient credit distribution
 
 ### Credit Calculation
 **Biodiversity Credits:** `habitat-size-hectares × biodiversity-score`  
@@ -177,6 +189,7 @@ Credits are minted proportionally based on time elapsed since last minting, with
 - ✅ Balance checks for all transfers
 - ✅ Trade status validation
 - ✅ Input validation for all parameters
+- ✅ Batch transfer validation for total amounts and atomic updates
 
 ## 🌍 Environmental Impact
 

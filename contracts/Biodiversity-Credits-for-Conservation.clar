@@ -378,17 +378,54 @@
     )
     (asserts! (>= sender-bio-balance bio-credits-amount) ERR_INSUFFICIENT_CREDITS)
     (asserts! (> bio-credits-amount u0) ERR_INVALID_AMOUNT)
-    
+
     (map-set user-balances
       {user: tx-sender}
       {credits: (- sender-bio-balance bio-credits-amount)}
     )
-    
+
     (map-set user-carbon-balances
       {user: tx-sender}
       {carbon-credits: (+ sender-carbon-balance carbon-credits-amount)}
     )
     (ok carbon-credits-amount)
+  )
+)
+
+(define-private (accumulate-amount (transfer {recipient: principal, amount: uint}) (acc uint))
+  (+ acc (get amount transfer))
+)
+
+(define-private (process-transfer (transfer {recipient: principal, amount: uint}) (acc (response bool uint)))
+  (let
+    (
+      (recipient-balance (default-to u0 (get credits (map-get? user-balances {user: (get recipient transfer)}))))
+    )
+    (begin
+      (map-set user-balances
+        {user: (get recipient transfer)}
+        {credits: (+ recipient-balance (get amount transfer))}
+      )
+      acc
+    )
+  )
+)
+
+(define-public (batch-transfer-credits (transfers (list 10 {recipient: principal, amount: uint})))
+  (let
+    (
+      (sender-balance (default-to u0 (get credits (map-get? user-balances {user: tx-sender}))))
+      (total-amount (fold accumulate-amount transfers u0))
+    )
+    (asserts! (>= sender-balance total-amount) ERR_INSUFFICIENT_CREDITS)
+    (asserts! (> (len transfers) u0) ERR_INVALID_AMOUNT)
+    (asserts! (> total-amount u0) ERR_INVALID_AMOUNT)
+    (try! (fold process-transfer transfers (ok true)))
+    (map-set user-balances
+      {user: tx-sender}
+      {credits: (- sender-balance total-amount)}
+    )
+    (ok true)
   )
 )
 
