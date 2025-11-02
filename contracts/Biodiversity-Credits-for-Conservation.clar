@@ -81,6 +81,11 @@
   }
 )
 
+(define-map retired-credits
+  {user: principal}
+  {amount: uint}
+)
+
 (define-public (register-habitat (location (string-ascii 100)) (size-hectares uint) (biodiversity-score uint))
   (let
     (
@@ -392,6 +397,30 @@
   )
 )
 
+(define-public (retire-credits (amount uint))
+  (let
+    (
+      (sender-balance (default-to u0 (get credits (map-get? user-balances {user: tx-sender}))))
+      (current-retired (default-to u0 (get amount (map-get? retired-credits {user: tx-sender}))))
+    )
+    (asserts! (>= sender-balance amount) ERR_INSUFFICIENT_CREDITS)
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+
+    (try! (ft-burn? biodiversity-credits amount tx-sender))
+
+    (map-set user-balances
+      {user: tx-sender}
+      {credits: (- sender-balance amount)}
+    )
+
+    (map-set retired-credits
+      {user: tx-sender}
+      {amount: (+ current-retired amount)}
+    )
+    (ok amount)
+  )
+)
+
 (define-private (accumulate-amount (transfer {recipient: principal, amount: uint}) (acc uint))
   (+ acc (get amount transfer))
 )
@@ -508,4 +537,8 @@
     total-credits-supply: (ft-get-supply biodiversity-credits),
     total-carbon-supply: (ft-get-supply carbon-credits)
   }
+)
+
+(define-read-only (get-retired-credits (user principal))
+  (default-to u0 (get amount (map-get? retired-credits {user: user})))
 )

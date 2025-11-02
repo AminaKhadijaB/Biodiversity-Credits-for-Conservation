@@ -41,6 +41,12 @@ Our smart contract creates a marketplace where:
 - Transfer carbon credits between users
 - Credit swap functionality (biodiversity ↔ carbon)
 
+### ♻️ Credit Retirement
+- Permanently retire biodiversity credits to demonstrate environmental commitment
+- Track retired credits per user for transparency and reporting
+- Burn credits from circulation to prevent double-counting
+- Support corporate sustainability goals and voluntary carbon markets
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -137,6 +143,12 @@ Execute trades:
   u100)  ;; biodiversity credits to swap for carbon credits (75% conversion rate)
 ```
 
+### 10. Retire Credits ♻️
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation retire-credits
+  u50)  ;; amount of biodiversity credits to permanently retire
+```
+
 ## 🔍 Read-Only Functions
 
 ### Check Balances
@@ -165,6 +177,11 @@ Execute trades:
 (contract-call? .Biodiversity-Credits-for-Conservation get-contract-info)
 ```
 
+### Check Retired Credits
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-retired-credits 'SP123...)
+```
+
 ## 🏗️ Contract Architecture
 
 ### Core Components
@@ -175,6 +192,7 @@ Execute trades:
 - **Partnership Management**: NGO authorization and reputation
 - **Carbon Integration**: Links habitats to carbon sequestration projects
 - **Batch Transfer System**: Efficient multi-recipient credit distribution
+- **Credit Retirement System**: Permanent credit retirement for environmental commitment
 
 ### Credit Calculation
 **Biodiversity Credits:** `habitat-size-hectares × biodiversity-score`  
@@ -190,15 +208,17 @@ Credits are minted proportionally based on time elapsed since last minting, with
 - ✅ Trade status validation
 - ✅ Input validation for all parameters
 - ✅ Batch transfer validation for total amounts and atomic updates
+- ✅ Credit retirement with permanent burning and tracking
 
 ## 🌍 Environmental Impact
 
 Each credit represents verified conservation of biodiversity-rich habitat with optional carbon sequestration benefits. The dual-credit economic incentive structure encourages:
-- Long-term habitat preservation  
+- Long-term habitat preservation
 - Carbon sequestration and climate action
 - Professional verification standards
 - Transparent impact measurement
 - Sustainable conservation funding through multiple revenue streams
+- Voluntary credit retirement for enhanced environmental commitment
 
 ## 📊 Data Structures
 
@@ -220,6 +240,11 @@ Each credit represents verified conservation of biodiversity-rich habitat with o
 - Linked habitat and carbon sequestration rates
 - Methodology tracking (VCS, Gold Standard, etc.)
 - Active status and minting history
+
+### Retired Credits
+- Permanent credit retirement tracking per user
+- Burned credits removed from circulation
+- Transparency for environmental commitment reporting
 
 ## 🤝 Contributing
 
