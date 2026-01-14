@@ -47,6 +47,18 @@ Our smart contract creates a marketplace where:
 - Burn credits from circulation to prevent double-counting
 - Support corporate sustainability goals and voluntary carbon markets
 
+### 🏦 Credit Staking
+- Stake biodiversity credits to earn passive rewards at 5% annual rate
+- Automatic reward calculation based on staked amount and time
+- Flexible staking and unstaking with reward claiming
+- Incentivize long-term credit holding for conservation impact
+
+### 🆙 Habitat Upgrades
+- Submit habitat improvement proposals with updated size and biodiversity scores
+- NGO-verified upgrades to reflect enhanced conservation efforts
+- Automatic recalculation of credit generation rates post-approval
+- Transparent tracking of habitat evolution and improvements
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -149,6 +161,42 @@ Execute trades:
   u50)  ;; amount of biodiversity credits to permanently retire
 ```
 
+### 11. Submit Habitat Upgrade 🆙
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation submit-habitat-upgrade
+  u1          ;; habitat-id
+  u1200       ;; new size in hectares
+  u85)        ;; new biodiversity score
+```
+
+### 12. Approve Habitat Upgrade ✅
+Only authorized NGOs can approve upgrades:
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation approve-habitat-upgrade
+  u1  ;; upgrade-id
+  0x1234...)  ;; satellite data hash
+```
+
+### 13. Stake Credits 🏦
+Stake biodiversity credits to earn passive rewards:
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation stake-credits
+  u100)  ;; amount to stake
+```
+
+### 14. Claim Staking Rewards 💰
+Claim accumulated staking rewards:
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation claim-staking-rewards)
+```
+
+### 15. Unstake Credits 🔓
+Unstake credits (auto-claims rewards):
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation unstake-credits
+  u50)  ;; amount to unstake
+```
+
 ## 🔍 Read-Only Functions
 
 ### Check Balances
@@ -182,6 +230,16 @@ Execute trades:
 (contract-call? .Biodiversity-Credits-for-Conservation get-retired-credits 'SP123...)
 ```
 
+### View Habitat Upgrade Details
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-habitat-upgrade u1)
+```
+
+### Check Stake Information
+```clarity
+(contract-call? .Biodiversity-Credits-for-Conservation get-stake-info 'SP123...)
+```
+
 ## 🏗️ Contract Architecture
 
 ### Core Components
@@ -193,6 +251,8 @@ Execute trades:
 - **Carbon Integration**: Links habitats to carbon sequestration projects
 - **Batch Transfer System**: Efficient multi-recipient credit distribution
 - **Credit Retirement System**: Permanent credit retirement for environmental commitment
+- **Habitat Upgrade System**: NGO-verified habitat improvements and credit rate adjustments
+- **Credit Staking System**: Passive reward mechanism for staked biodiversity credits
 
 ### Credit Calculation
 **Biodiversity Credits:** `habitat-size-hectares × biodiversity-score`  
@@ -209,6 +269,7 @@ Credits are minted proportionally based on time elapsed since last minting, with
 - ✅ Input validation for all parameters
 - ✅ Batch transfer validation for total amounts and atomic updates
 - ✅ Credit retirement with permanent burning and tracking
+- ✅ Staking balance validation and reward calculation integrity
 
 ## 🌍 Environmental Impact
 
@@ -219,6 +280,7 @@ Each credit represents verified conservation of biodiversity-rich habitat with o
 - Transparent impact measurement
 - Sustainable conservation funding through multiple revenue streams
 - Voluntary credit retirement for enhanced environmental commitment
+- Staking incentives promoting long-term credit retention and ecosystem stability
 
 ## 📊 Data Structures
 
@@ -245,6 +307,11 @@ Each credit represents verified conservation of biodiversity-rich habitat with o
 - Permanent credit retirement tracking per user
 - Burned credits removed from circulation
 - Transparency for environmental commitment reporting
+
+### Stake Records
+- Staked amount, staking block, and last claim block tracking
+- Automatic reward accumulation based on time and amount
+- Flexible unstaking with reward auto-claiming
 
 ## 🤝 Contributing
 

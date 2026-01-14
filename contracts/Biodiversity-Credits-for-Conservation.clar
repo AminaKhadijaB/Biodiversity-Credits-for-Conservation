@@ -8,8 +8,12 @@
 (define-constant ERR_TRADE_NOT_FOUND (err u106))
 (define-constant ERR_CARBON_PROJECT_NOT_FOUND (err u107))
 (define-constant ERR_INVALID_CARBON_RATE (err u108))
+(define-constant ERR_UPGRADE_NOT_FOUND (err u109))
+(define-constant ERR_UPGRADE_ALREADY_APPROVED (err u110))
+(define-constant STAKING_REWARD_RATE u5)
 
 (define-data-var next-habitat-id uint u1)
+(define-data-var next-upgrade-id uint u1)
 (define-data-var next-trade-id uint u1)
 (define-data-var next-carbon-project-id uint u1)
 
@@ -84,6 +88,27 @@
 (define-map retired-credits
   {user: principal}
   {amount: uint}
+)
+
+(define-map habitat-upgrades
+  {upgrade-id: uint}
+  {
+    habitat-id: uint,
+    owner: principal,
+    new-size-hectares: uint,
+    new-biodiversity-score: uint,
+    approved: bool,
+    submitted-block: uint
+  }
+)
+
+(define-map stakes
+  {user: principal}
+  {
+    amount: uint,
+    staked-block: uint,
+    last-claim-block: uint
+  }
 )
 
 (define-public (register-habitat (location (string-ascii 100)) (size-hectares uint) (biodiversity-score uint))
@@ -440,6 +465,72 @@
   )
 )
 
+(define-public (submit-habitat-upgrade (habitat-id uint) (new-size-hectares uint) (new-biodiversity-score uint))
+  (let
+    (
+      (habitat (unwrap! (map-get? habitats {habitat-id: habitat-id}) ERR_HABITAT_NOT_FOUND))
+      (upgrade-id (var-get next-upgrade-id))
+    )
+    (asserts! (is-eq tx-sender (get owner habitat)) ERR_NOT_AUTHORIZED)
+    (asserts! (> new-size-hectares u0) ERR_INVALID_AMOUNT)
+    (asserts! (> new-biodiversity-score u0) ERR_INVALID_AMOUNT)
+
+    (map-insert habitat-upgrades
+      {upgrade-id: upgrade-id}
+      {
+        habitat-id: habitat-id,
+        owner: tx-sender,
+        new-size-hectares: new-size-hectares,
+        new-biodiversity-score: new-biodiversity-score,
+        approved: false,
+        submitted-block: stacks-block-height
+      }
+    )
+
+    (var-set next-upgrade-id (+ upgrade-id u1))
+    (ok upgrade-id)
+  )
+)
+
+(define-public (approve-habitat-upgrade (upgrade-id uint) (satellite-data-hash (buff 32)))
+  (let
+    (
+      (upgrade (unwrap! (map-get? habitat-upgrades {upgrade-id: upgrade-id}) ERR_UPGRADE_NOT_FOUND))
+      (habitat (unwrap! (map-get? habitats {habitat-id: (get habitat-id upgrade)}) ERR_HABITAT_NOT_FOUND))
+      (ngo-data (unwrap! (map-get? ngo-partnerships {ngo: tx-sender}) ERR_NOT_AUTHORIZED))
+    )
+    (asserts! (get authorized ngo-data) ERR_NOT_AUTHORIZED)
+    (asserts! (not (get approved upgrade)) ERR_UPGRADE_ALREADY_APPROVED)
+
+    (map-set habitat-upgrades
+      {upgrade-id: upgrade-id}
+      (merge upgrade {approved: true})
+    )
+
+    (map-set habitats
+      {habitat-id: (get habitat-id upgrade)}
+      (merge habitat
+        {
+          size-hectares: (get new-size-hectares upgrade),
+          biodiversity-score: (get new-biodiversity-score upgrade),
+          credits-per-year: (* (get new-size-hectares upgrade) (get new-biodiversity-score upgrade))
+        }
+      )
+    )
+
+    (map-set habitat-verifications
+      {habitat-id: (get habitat-id upgrade)}
+      {
+        verifier: tx-sender,
+        satellite-data-hash: satellite-data-hash,
+        verification-block: stacks-block-height,
+        expiry-block: (+ stacks-block-height u52560)
+      }
+    )
+    (ok true)
+  )
+)
+
 (define-public (batch-transfer-credits (transfers (list 10 {recipient: principal, amount: uint})))
   (let
     (
@@ -455,6 +546,51 @@
       {credits: (- sender-balance total-amount)}
     )
     (ok true)
+  )
+)
+
+(define-public (stake-credits (amount uint))
+  (let
+    (
+      (current-balance (default-to u0 (get credits (map-get? user-balances {user: tx-sender}))))
+      (existing-stake (default-to {amount: u0, staked-block: u0, last-claim-block: u0} (map-get? stakes {user: tx-sender})))
+    )
+    (asserts! (>= current-balance amount) ERR_INSUFFICIENT_CREDITS)
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (map-set user-balances {user: tx-sender} {credits: (- current-balance amount)})
+    (map-set stakes {user: tx-sender} {amount: (+ (get amount existing-stake) amount), staked-block: (if (is-eq (get staked-block existing-stake) u0) stacks-block-height (get staked-block existing-stake)), last-claim-block: (get last-claim-block existing-stake)})
+    (ok true)
+  )
+)
+
+(define-public (unstake-credits (amount uint))
+  (let
+    (
+      (stake (unwrap! (map-get? stakes {user: tx-sender}) ERR_NOT_AUTHORIZED))
+      (current-amount (get amount stake))
+    )
+    (asserts! (>= current-amount amount) ERR_INSUFFICIENT_CREDITS)
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (try! (claim-staking-rewards))
+    (map-set stakes {user: tx-sender} (merge stake {amount: (- current-amount amount)}))
+    (map-set user-balances {user: tx-sender} {credits: (+ (default-to u0 (get credits (map-get? user-balances {user: tx-sender}))) amount)})
+    (ok true)
+  )
+)
+
+(define-public (claim-staking-rewards)
+  (let
+    (
+      (stake (unwrap! (map-get? stakes {user: tx-sender}) ERR_NOT_AUTHORIZED))
+      (blocks-staked (- stacks-block-height (get staked-block stake)))
+      (rewards (/ (* (get amount stake) STAKING_REWARD_RATE blocks-staked) u52560))
+      (current-balance (default-to u0 (get credits (map-get? user-balances {user: tx-sender}))))
+    )
+    (asserts! (> blocks-staked u0) ERR_INVALID_AMOUNT)
+    (try! (ft-mint? biodiversity-credits rewards tx-sender))
+    (map-set user-balances {user: tx-sender} {credits: (+ current-balance rewards)})
+    (map-set stakes {user: tx-sender} (merge stake {last-claim-block: stacks-block-height}))
+    (ok rewards)
   )
 )
 
@@ -534,11 +670,20 @@
     total-habitats: (- (var-get next-habitat-id) u1),
     total-trades: (- (var-get next-trade-id) u1),
     total-carbon-projects: (- (var-get next-carbon-project-id) u1),
+    total-upgrades: (- (var-get next-upgrade-id) u1),
     total-credits-supply: (ft-get-supply biodiversity-credits),
     total-carbon-supply: (ft-get-supply carbon-credits)
   }
 )
 
+(define-read-only (get-habitat-upgrade (upgrade-id uint))
+  (map-get? habitat-upgrades {upgrade-id: upgrade-id})
+)
+
 (define-read-only (get-retired-credits (user principal))
   (default-to u0 (get amount (map-get? retired-credits {user: user})))
+)
+
+(define-read-only (get-stake-info (user principal))
+  (map-get? stakes {user: user})
 )
